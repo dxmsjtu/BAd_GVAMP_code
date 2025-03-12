@@ -1,43 +1,26 @@
 function [x_hat_1k, theta_b, dMSE_A, dMSE_x,dMSE_b] = Grvamp_EM_Ad_final_multibit_DL_structured(Ai, A0, y, A, wvar,T_LMMSE, T_VN_denoising, x_true,b_true, NumBits,delta)
 % GrVAMP algorithm for one bit compressed sensing under additive Gaussian
 global  T 
-
-[m, n] = size(A0);
-
-L = size(x_true,2);
+[m, n] = size(A0);  L = size(x_true,2);
 % Perform estimation
 computeMseb = @(noise) 20*log10(norm(noise(:))/norm(b_true));
-
 %singal 
-Signal_error_function =...
-    @(q) 20*log10(norm(x_true -...
-    q*find_permutation(x_true,q),'fro')/norm(x_true,'fro'));
-dictionary_error_function =...
-    @(q) 20*log10(norm(A -...
-    q*find_permutation(A,q),'fro')/norm(A,'fro'));
+Signal_error_function =  @(q) 20*log10(norm(x_true - q*find_permutation(x_true,q),'fro')/norm(x_true,'fro'));
+dictionary_error_function = @(q) 20*log10(norm(A - q*find_permutation(A,q),'fro')/norm(A,'fro'));
 
-dMSE_A = zeros();
-dMSE_x = zeros();
-dMSE_b = zeros();
-noise_var = zeros();
+dMSE_A = zeros();dMSE_x = zeros();dMSE_b = zeros();noise_var = zeros();
 % initialization
 x_hat_1k= zeros(size(x_true)); 
 Q = length(b_true);
 theta_b = randn(Q,1);
 
-lar_num = 1e12;
-sma_num = 1e-8;
-
+lar_num = 1e12;sma_num = 1e-8;
 % initialization of EM parameters
 AQ_est = gen_matrix(Ai,b_true,Q);
 A = A0+AQ_est;
 wvar_hat = 1e3;
-
 % wvar_hat = norm(y)^2/(100+1)/length(y);
-
-mu0 = 0;
-pi_t = 0.1;
-vx = 1e1;
+mu0 = 0;    pi_t = 0.1;    vx = 1e1;
 
 % Initialization for nonlinear case
 z_A_ext = zeros(m,L);
@@ -62,7 +45,6 @@ v_A_post = lar_num*ones(1,L);
 z_A_post = zeros(m,L);
 sigma2_tilde_est = ones(1,L);
 for t = 1:T
-
     if NumBits < inf % nonlinear observations
         % obtain the equivalent linear observations
         for l = 1:L          
@@ -73,7 +55,6 @@ for t = 1:T
             sigma2_tilde_est(l) = min(sigma2_tilde_est(l),lar_num);
             sigma2_tilde_est(l) = max(sigma2_tilde_est(l),sma_num); 
             y_tilde(:,l) = sigma2_tilde_est(l).*(z_B_post./v_B_post-z_A_ext(:,l)./v_A_ext);  % 
-
         end   
         sigma2_tilde = mean(sigma2_tilde_est);
 %         if(t>1)
@@ -87,8 +68,7 @@ for t = 1:T
         if t==1 
             sigma2_tilde = wvar_hat; % for unquantized measurements, the noise variance is initialized
         end
-    end
- 
+    end 
      % LMMSE estimation
     for k0 = 1:T_LMMSE
         AQ_est = gen_matrix(Ai,theta_b,Q);
@@ -227,15 +207,12 @@ end
 xx = 1;
 end
 
-
-
 function [z_post, vz_post] = outputUpdate(y, z, mz, sigma, NumBits,delta)
 % Performs output node update.
 %
-% NOTE: This function can potentially run into numerical erros. This is due
-% to the sub-function evaluateTotalMoment, which performs integration 
-% of a gaussian in some integral given by quantizer boundaries. In case
-% when this inteval is far from the mean of the normal and the normal has a
+% NOTE: This function can potentially run into numerical errors. This is due to the sub-function evaluateTotalMoment, 
+% which performs integration of a gaussian in some integral given by quantizer boundaries. In case when this inteval
+% is far from the mean of the normal and the normal has a
 % small variance moments might result in 0, although in reality they
 % represent some small values, ratio of which is definetely non-zero.
 
@@ -244,9 +221,7 @@ m = size(y, 1);
 
 % Total effective noise (AWGN + estiamtion)
 mtv = mz + (sigma^2);
-
 % Initialize outputs
-
 % comupte the lower and up bounds
 r_low = y - delta/2;
 r_low(r_low < -(2^NumBits-1/2)*delta) = -1e50;
@@ -265,7 +240,6 @@ r_up(r_up > (2^NumBits-1/2)*delta) = 1e50;
 
 ita1 = (sign(y).*z - min(abs(r_low),abs(r_up)))./sqrt(mtv);
 ita2 = (sign(y).*z - max(abs(r_low),abs(r_up)))./sqrt(mtv);
-
 
 A = normpdf(ita1) - normpdf(ita2);
 B = normcdf(ita1) - normcdf(ita2);
